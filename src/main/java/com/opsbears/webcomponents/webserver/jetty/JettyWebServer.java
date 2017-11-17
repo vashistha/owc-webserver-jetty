@@ -3,7 +3,6 @@ package com.opsbears.webcomponents.webserver.jetty;
 import com.opsbears.webcomponents.net.IPAddressPortPair;
 import com.opsbears.webcomponents.net.http.ServerHttpRequest;
 import com.opsbears.webcomponents.net.http.ServerHttpResponse;
-import com.opsbears.webcomponents.webserver.SSLProvider;
 import com.opsbears.webcomponents.webserver.WebRequestHandler;
 import com.opsbears.webcomponents.webserver.WebServer;
 import com.opsbears.webcomponents.webserver.WebServerConfiguration;
@@ -17,25 +16,18 @@ import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import javax.net.ssl.*;
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.security.Principal;
-import java.security.PrivateKey;
-import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 
 @ParametersAreNonnullByDefault
 public class JettyWebServer implements WebServer {
@@ -46,18 +38,7 @@ public class JettyWebServer implements WebServer {
     }
 
     private SslContextFactory getSslContextFactory() {
-        Set<SSLProvider> sslProviders = configuration.getSslProviders();
-        SslContextFactory contextFactory = new SslContextFactory();
-        SSLParameters sslParameters = new SSLParameters();
-
-        Set<javax.net.ssl.SNIMatcher> sniMatchers = new TreeSet<>();
-        for (SSLProvider sslProvider : sslProviders) {
-            sniMatchers.add(new SNIMatcher(sslProvider));
-        }
-
-        sslParameters.setSNIMatchers(sniMatchers);
-        contextFactory.customize(sslParameters);
-        return contextFactory;
+        return new JettySslContextFactory(configuration.getSslProviders());
     }
 
     private ServerConnector getHttpsConnector(
@@ -81,6 +62,7 @@ public class JettyWebServer implements WebServer {
             SslConnectionFactory ssl = new SslConnectionFactory(sslContextFactory, alpn.getProtocol());
             httpsConnector = new ServerConnector(server, ssl, alpn, h2, https);
         } catch (IllegalStateException e) {
+            //HTTP/2 ALPN doesn't work, fall back to HTTP/1.1
             SslConnectionFactory ssl = new SslConnectionFactory(sslContextFactory, https.getProtocol());
             httpsConnector = new ServerConnector(server, ssl, https);
         }
@@ -185,78 +167,6 @@ public class JettyWebServer implements WebServer {
             server.join();
         } catch (Throwable e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    class SNIMatcher extends javax.net.ssl.SNIMatcher {
-        private final SSLProvider sslProvider;
-
-        SNIMatcher(SSLProvider sslProvider) {
-            super(StandardConstants.SNI_HOST_NAME);
-            this.sslProvider = sslProvider;
-        }
-
-        @Override
-        public boolean matches(SNIServerName serverName) {
-            return sslProvider.match(((SNIHostName)serverName).getAsciiName());
-        }
-
-        public PrivateKey getPrivateKey(SNIServerName serverName) {
-            return sslProvider.getPrivateKey(((SNIHostName)serverName).getAsciiName());
-        }
-
-        public X509Certificate getCertificate(SNIServerName serverName)
-        {
-            return sslProvider.getCertificate(((SNIHostName)serverName).getAsciiName());
-        }
-    }
-
-    class JettyX509ExtendedKeyManager extends X509ExtendedKeyManager {
-        public JettyX509ExtendedKeyManager() {
-        }
-
-        @Override
-        public String[] getClientAliases(
-            String s,
-            Principal[] principals
-        ) {
-
-        }
-
-        @Override
-        public String chooseClientAlias(
-            String[] strings,
-            Principal[] principals,
-            Socket socket
-        ) {
-            return null;
-        }
-
-        @Override
-        public String[] getServerAliases(
-            String s,
-            Principal[] principals
-        ) {
-            return new String[0];
-        }
-
-        @Override
-        public String chooseServerAlias(
-            String s,
-            Principal[] principals,
-            Socket socket
-        ) {
-            return null;
-        }
-
-        @Override
-        public X509Certificate[] getCertificateChain(String s) {
-            return new X509Certificate[0];
-        }
-
-        @Override
-        public PrivateKey getPrivateKey(String s) {
-            return null;
         }
     }
 }
