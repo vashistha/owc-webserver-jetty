@@ -14,6 +14,7 @@ import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemReader;
 import org.slf4j.simple.SimpleLogger;
 
+import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -151,6 +152,19 @@ public class TestServerApplication {
                     @Override
                     public boolean match(String s) {
                         return s.equals("example.com");
+                    }
+
+                    @Nullable
+                    @Override
+                    public String getKeyId(
+                        String s,
+                        KeyType keyType
+                    ) {
+                        if (s.equals("example.com") && keyType.equals(KeyType.RSA)) {
+                            return "example.com";
+                        } else {
+                            return null;
+                        }
                     }
 
                     @Override

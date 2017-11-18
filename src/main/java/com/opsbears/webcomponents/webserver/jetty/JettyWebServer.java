@@ -6,10 +6,7 @@ import com.opsbears.webcomponents.net.http.ServerHttpResponse;
 import com.opsbears.webcomponents.webserver.WebRequestHandler;
 import com.opsbears.webcomponents.webserver.WebServer;
 import com.opsbears.webcomponents.webserver.WebServerConfiguration;
-import org.eclipse.jetty.alpn.server.ALPNServerConnectionFactory;
-import org.eclipse.jetty.http2.HTTP2Cipher;
 import org.eclipse.jetty.http2.server.HTTP2CServerConnectionFactory;
-import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.server.handler.gzip.GzipHandler;
@@ -45,28 +42,16 @@ public class JettyWebServer implements WebServer {
         Server server,
         int httpsPort
     ) {
-        HttpConfiguration httpConfig = new HttpConfiguration();
-        httpConfig.setSecureScheme("https");
-        httpConfig.setSecurePort(httpsPort);
-
-        HttpConfiguration httpsConfig = new HttpConfiguration(httpConfig);
-        httpsConfig.addCustomizer(new SecureRequestCustomizer());
-        HttpConnectionFactory https = new HttpConnectionFactory(httpsConfig);
-        SslContextFactory sslContextFactory = getSslContextFactory();
-        sslContextFactory.setCipherComparator(HTTP2Cipher.COMPARATOR);
-        ServerConnector httpsConnector;
-        try {
-            ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
-            alpn.setDefaultProtocol("h2");
-            HTTP2ServerConnectionFactory h2 = new HTTP2ServerConnectionFactory(httpsConfig);
-            SslConnectionFactory ssl = new SslConnectionFactory(sslContextFactory, alpn.getProtocol());
-            httpsConnector = new ServerConnector(server, ssl, alpn, h2, https);
-        } catch (IllegalStateException e) {
-            //HTTP/2 ALPN doesn't work, fall back to HTTP/1.1
-            SslConnectionFactory ssl = new SslConnectionFactory(sslContextFactory, https.getProtocol());
-            httpsConnector = new ServerConnector(server, ssl, https);
-        }
-        return httpsConnector;
+        HttpConfiguration https = new HttpConfiguration();
+        https.addCustomizer(new SecureRequestCustomizer());
+        SslContextFactory sslContextFactory = new JettySslContextFactory(configuration.getSslProviders());
+        ServerConnector sslConnector = new ServerConnector(
+            server,
+            new SslConnectionFactory(sslContextFactory, "http/1.1"),
+            new HttpConnectionFactory(https)
+        );
+        sslConnector.setPort(httpsPort);
+        return sslConnector;
     }
 
     private ServerConnector getHttpConnector(Server server) {

@@ -6,10 +6,13 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SNIServerName;
 import javax.net.ssl.StandardConstants;
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
 
 @ParametersAreNonnullByDefault
 class SNIMatcher extends javax.net.ssl.SNIMatcher {
     private final X509CertificateProvider provider;
+    private SNIServerName matchedHostName = null;
 
     SNIMatcher(X509CertificateProvider provider) {
         super(StandardConstants.SNI_HOST_NAME);
@@ -18,6 +21,22 @@ class SNIMatcher extends javax.net.ssl.SNIMatcher {
 
     @Override
     public boolean matches(SNIServerName serverName) {
-        return provider.match(((SNIHostName)serverName).getAsciiName());
+        String hostName = ((SNIHostName)serverName).getAsciiName();
+        if (provider.match(hostName)) {
+            //Side effect because the client HELLO message is not accessible from the ExtendedKeyManager, so we
+            //cache the matched host name here
+            matchedHostName = serverName;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    X509CertificateProvider getProvider() {
+        return provider;
+    }
+
+    SNIServerName getMatchedHostName() {
+        return matchedHostName;
     }
 }
