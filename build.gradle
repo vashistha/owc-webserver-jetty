@@ -2,9 +2,16 @@ group 'com.opsbears.webcomponents.webserver'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
+applicationDefaultJvmArgs = [
+        "-Xbootclasspath/p:build/libs/alpn-api-1.1.3.v20160715.jar",
+        "-Dfile.encoding=utf-8",
+        "-Duser.language=en",
+        "-Duser.country=US",
+        "-Duser.variant=US"
+]
 
 sourceCompatibility = 1.8
-
+targetCompatibility = 1.8
 
 repositories {
     jcenter()

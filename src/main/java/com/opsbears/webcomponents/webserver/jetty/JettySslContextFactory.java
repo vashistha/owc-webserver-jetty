@@ -6,12 +6,10 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 import javax.annotation.ParametersAreNonnullByDefault;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLParameters;
-import javax.net.ssl.TrustManager;
 import java.io.IOException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.CRL;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,13 +40,6 @@ public class JettySslContextFactory extends SslContextFactory {
 
         sslParams.setSNIMatchers(sniMatchers);
         return super.customize(sslParams);
-    }
-
-    @Override
-    protected TrustManager[] getTrustManagers(KeyStore trustStore, Collection<? extends CRL> crls) throws Exception {
-        return new TrustManager[] {
-            new JettyX509TrustManager(certificateProviders)
-        };
     }
 
     @Override

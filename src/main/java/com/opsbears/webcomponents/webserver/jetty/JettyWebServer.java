@@ -39,22 +39,21 @@ public class JettyWebServer implements WebServer {
     }
 
     private ServerConnector getHttpsConnector(
-        Server server,
-        int httpsPort
+        Server server
     ) {
         HttpConfiguration https = new HttpConfiguration();
         https.addCustomizer(new SecureRequestCustomizer());
         SslContextFactory sslContextFactory = new JettySslContextFactory(configuration.getSslProviders());
-        ServerConnector sslConnector = new ServerConnector(
+        return new ServerConnector(
             server,
             new SslConnectionFactory(sslContextFactory, "http/1.1"),
             new HttpConnectionFactory(https)
         );
-        sslConnector.setPort(httpsPort);
-        return sslConnector;
     }
 
-    private ServerConnector getHttpConnector(Server server) {
+    private ServerConnector getHttpConnector(
+        Server server
+    ) {
         HttpConfiguration config = new HttpConfiguration();
         HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(config);
         HTTP2CServerConnectionFactory http2cConnectionFactory = new HTTP2CServerConnectionFactory(config);
@@ -74,7 +73,7 @@ public class JettyWebServer implements WebServer {
         }
 
         for (IPAddressPortPair ipPortPair : configuration.getSslListen()) {
-            ServerConnector https = getHttpsConnector(server, ipPortPair.getPort());
+            ServerConnector https = getHttpsConnector(server);
             https.setHost(ipPortPair.getIpAddress().toString());
             https.setPort(ipPortPair.getPort());
             https.setIdleTimeout(30000);
@@ -93,7 +92,14 @@ public class JettyWebServer implements WebServer {
             GzipHandler gzip = new GzipHandler();
             gzip.setIncludedMethods("GET", "POST");
             gzip.setMinGzipSize(245);
-            gzip.setIncludedMimeTypes("text/plain", "text/xml", "application/xml", "text/html", "text/css", "application/javascript");
+            gzip.setIncludedMimeTypes(
+                "text/plain",
+                "text/xml",
+                "application/xml",
+                "text/html",
+                "text/css",
+                "application/javascript"
+            );
             server.setHandler(gzip);
 
             WebRequestHandler requestHandler = configuration.getWebRequestHandler();
