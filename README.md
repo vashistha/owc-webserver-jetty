@@ -52,3 +52,10 @@ certificate source, but allows easier integration of external certificate source
 integrating something like LetsEncrypt.
 
 If you need more help working with certificates, [read my blog post on the topic](https://pasztor.at/blog/working-with-certificates-in-java). 
+
+### Enabling HTTP/2
+
+HTTP/2 needs what's called Application-Layer Protocol Negotiation, or ALPN for short. Unfortunately the only way to
+do this in OpenJDK 8 is to load a .jar file at boot time. This file is specific to the OpenJDK version, so we
+cannot distribute it with the webserver code. The ALPN boot version needed can be determined from the
+[Jetty documentation page](https://www.eclipse.org/jetty/documentation/9.4.x/alpn-chapter.html).

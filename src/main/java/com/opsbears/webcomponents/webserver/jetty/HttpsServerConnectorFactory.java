@@ -2,7 +2,6 @@ package com.opsbears.webcomponents.webserver.jetty;
 
 import com.opsbears.webcomponents.net.IPAddressPortPair;
 import com.opsbears.webcomponents.webserver.X509CertificateProvider;
-import org.eclipse.jetty.alpn.ALPN;
 import org.eclipse.jetty.alpn.server.ALPNServerConnectionFactory;
 import org.eclipse.jetty.http2.HTTP2Cipher;
 import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
@@ -30,7 +29,6 @@ public class HttpsServerConnectorFactory implements ServerConnectorFactory {
         HttpConfiguration httpConfiguration = new HttpConfiguration();
         httpConfiguration.setSendServerVersion(false);
         httpConfiguration.setSendXPoweredBy(false);
-        httpConfiguration.addCustomizer(new SecureRequestCustomizer());
 
         HttpConnectionFactory https = new HttpConnectionFactory(httpConfiguration);
         SslContextFactory sslContextFactory = new ExternalCertificateSslContextFactory(certificateProviders);
@@ -52,8 +50,6 @@ public class HttpsServerConnectorFactory implements ServerConnectorFactory {
         httpsConnector.setHost(ipPortPair.getIpAddress().toString());
         httpsConnector.setPort(ipPortPair.getPort());
         httpsConnector.setIdleTimeout(30000);
-
-        ALPN.debug = true;
         return httpsConnector;
     }
 }
