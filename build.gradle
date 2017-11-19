@@ -2,6 +2,8 @@ group 'com.opsbears.webcomponents.webserver'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
+apply plugin: 'application'
+
 applicationDefaultJvmArgs = [
         "-Xbootclasspath/p:build/libs/alpn-api-1.1.3.v20160715.jar",
         "-Dfile.encoding=utf-8",
@@ -20,9 +22,9 @@ repositories {
 }
 
 dependencies {
-    compile group: 'org.eclipse.jetty', name: 'jetty-server', version: '9.4.0.v20161208'
-    compile group: 'org.eclipse.jetty.http2', name:'http2-server', version:'9.4.0.v20161208'
-    compile group: 'org.eclipse.jetty', name:'jetty-alpn-server', version:'9.4.0.v20161208'
+    compile group: 'org.eclipse.jetty', name: 'jetty-server', version: '9.4.7.v20170914'
+    compile group: 'org.eclipse.jetty.http2', name:'http2-server', version:'9.4.7.v20170914'
+    compile group: 'org.eclipse.jetty', name:'jetty-alpn-server', version:'9.4.7.v20170914'
     compile group: 'org.eclipse.jetty.alpn', name:'alpn-api', version:'1.1.3.v20160715'
 
     compile group: 'javax.servlet', name: 'javax.servlet-api', version: '3.1.0'
@@ -37,3 +39,17 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
+task copyRuntimeLibs(type: Copy) {
+    into "$buildDir/libs"
+    from configurations.runtime
+}
+
+jar {
+    dependsOn copyRuntimeLibs
+    manifest {
+        attributes(
+                'Build-Time': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                'Class-Path': configurations.compile.collect { it.getName() }.join(' ')
+        )
+    }
+}
