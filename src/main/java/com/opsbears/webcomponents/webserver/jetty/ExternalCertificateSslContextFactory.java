@@ -15,11 +15,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * This context factory allows Jetty to fetch certificates from an external source (e.g. a database).
+ */
 @ParametersAreNonnullByDefault
-public class JettySslContextFactory extends SslContextFactory {
+public class ExternalCertificateSslContextFactory extends SslContextFactory {
     private final Collection<X509CertificateProvider> certificateProviders;
 
-    public JettySslContextFactory(Collection<X509CertificateProvider> certificateProviders) {
+    public ExternalCertificateSslContextFactory(Collection<X509CertificateProvider> certificateProviders) {
         super();
         this.certificateProviders = certificateProviders;
         try {
@@ -35,7 +38,7 @@ public class JettySslContextFactory extends SslContextFactory {
     public SSLParameters customize(SSLParameters sslParams) {
         List<javax.net.ssl.SNIMatcher> sniMatchers = new ArrayList<>();
         for (X509CertificateProvider sslProvider : certificateProviders) {
-            sniMatchers.add(new SNIMatcher(sslProvider));
+            sniMatchers.add(new SniMatcher(sslProvider));
         }
 
         sslParams.setSNIMatchers(sniMatchers);

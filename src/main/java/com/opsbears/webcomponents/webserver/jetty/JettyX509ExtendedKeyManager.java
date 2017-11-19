@@ -5,10 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import javax.net.ssl.SNIHostName;
-import javax.net.ssl.SNIMatcher;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.X509ExtendedKeyManager;
+import javax.net.ssl.*;
 import java.net.Socket;
 import java.security.Principal;
 import java.security.PrivateKey;
@@ -21,8 +18,7 @@ class JettyX509ExtendedKeyManager extends X509ExtendedKeyManager {
 
     private final Collection<X509CertificateProvider> certificateProviders;
 
-    public JettyX509ExtendedKeyManager(Collection<X509CertificateProvider> certificateProviders) {
-
+    JettyX509ExtendedKeyManager(Collection<X509CertificateProvider> certificateProviders) {
         this.certificateProviders = certificateProviders;
     }
 
@@ -31,7 +27,7 @@ class JettyX509ExtendedKeyManager extends X509ExtendedKeyManager {
         String keyType,
         Principal[] principals
     ) {
-        logger.debug("getClientAliases");
+        //We don't care for client certificates
         return null;
     }
 
@@ -41,27 +37,27 @@ class JettyX509ExtendedKeyManager extends X509ExtendedKeyManager {
         Principal[] principals,
         Socket socket
     ) {
-        logger.debug("chooseClientAliases");
+        //We don't care for client certificates
         return null;
     }
 
     @Override
     public String[] getServerAliases(
-        String s,
+        String keyType,
         Principal[] principals
     ) {
-        logger.debug("getServerAliases");
+        //TODO implement default key without SNI for API use.
         return null;
     }
 
     @Override
     public String chooseServerAlias(
-        String alias,
+        String keyType,
         Principal[] principals,
         Socket socket
     ) {
-        logger.debug("chooseServerAlias");
-        return null;
+        SSLSocket sslSocket = (SSLSocket)socket;
+        return chooseKeyId(keyType, sslSocket.getSSLParameters());
     }
 
     @Override
@@ -72,6 +68,7 @@ class JettyX509ExtendedKeyManager extends X509ExtendedKeyManager {
                 return certificateChain;
             }
         }
+        //TODO implement default key without SNI for API use.
         return null;
     }
 
@@ -83,13 +80,18 @@ class JettyX509ExtendedKeyManager extends X509ExtendedKeyManager {
                 return privateKey;
             }
         }
+        //TODO implement default key without SNI for API use.
         return null;
     }
 
     @Override
     public String chooseEngineServerAlias(String keyType, Principal[] principals, SSLEngine sslEngine) {
+        return chooseKeyId(keyType, sslEngine.getSSLParameters());
+    }
+
+    private String chooseKeyId(String keyType, SSLParameters sslParameters) {
         try {
-            com.opsbears.webcomponents.webserver.jetty.SNIMatcher sniMatcher = getSNIMatcher(sslEngine);
+            SniMatcher sniMatcher = getSniMatcher(sslParameters);
             if (sniMatcher == null) {
                 return null;
             }
@@ -104,19 +106,20 @@ class JettyX509ExtendedKeyManager extends X509ExtendedKeyManager {
             }
         } catch (Exception ignored) {
         }
+        //TODO implement default key without SNI for API use.
         return null;
     }
 
-    private com.opsbears.webcomponents.webserver.jetty.SNIMatcher getSNIMatcher(SSLEngine sslEngine) {
-        for (SNIMatcher sniMatcher : sslEngine.getSSLParameters().getSNIMatchers()) {
-            if (sniMatcher instanceof com.opsbears.webcomponents.webserver.jetty.SNIMatcher) {
-                com.opsbears.webcomponents.webserver.jetty.SNIMatcher jettySniMatcher = (com.opsbears.webcomponents.webserver.jetty.SNIMatcher) sniMatcher;
+    private SniMatcher getSniMatcher(SSLParameters sslParameters) {
+        for (SNIMatcher sniMatcher : sslParameters.getSNIMatchers()) {
+            if (sniMatcher instanceof SniMatcher) {
+                SniMatcher jettySniMatcher = (SniMatcher) sniMatcher;
                 if (jettySniMatcher.getMatchedHostName() != null) {
                     return jettySniMatcher;
                 }
             }
         }
+        //TODO implement default key without SNI for API use.
         return null;
-
     }
 }

@@ -6,15 +6,13 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SNIServerName;
 import javax.net.ssl.StandardConstants;
-import java.security.PrivateKey;
-import java.security.cert.X509Certificate;
 
 @ParametersAreNonnullByDefault
-class SNIMatcher extends javax.net.ssl.SNIMatcher {
+class SniMatcher extends javax.net.ssl.SNIMatcher {
     private final X509CertificateProvider provider;
     private SNIServerName matchedHostName = null;
 
-    SNIMatcher(X509CertificateProvider provider) {
+    SniMatcher(X509CertificateProvider provider) {
         super(StandardConstants.SNI_HOST_NAME);
         this.provider = provider;
     }

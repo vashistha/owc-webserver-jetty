@@ -1,96 +1,37 @@
 package com.opsbears.webcomponents.webserver.jetty;
 
-import com.opsbears.webcomponents.net.IPAddressPortPair;
-import com.opsbears.webcomponents.net.http.ServerHttpRequest;
-import com.opsbears.webcomponents.net.http.ServerHttpResponse;
-import com.opsbears.webcomponents.webserver.WebRequestHandler;
 import com.opsbears.webcomponents.webserver.WebServer;
-import com.opsbears.webcomponents.webserver.WebServerConfiguration;
-import org.eclipse.jetty.http2.server.HTTP2CServerConnectionFactory;
-import org.eclipse.jetty.server.*;
-import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.gzip.GzipHandler;
-import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.util.List;
-import java.util.Map;
+import java.util.Collection;
 
 @ParametersAreNonnullByDefault
 public class JettyWebServer implements WebServer {
-    private final WebServerConfiguration configuration;
+    private final Handler requestHandler;
+    private final Collection<ServerConnectorFactory> connectorFactories;
 
-    JettyWebServer(WebServerConfiguration configuration) {
-        this.configuration = configuration;
-    }
-
-    private SslContextFactory getSslContextFactory() {
-        return new JettySslContextFactory(configuration.getSslProviders());
-    }
-
-    private ServerConnector getHttpsConnector(
-        Server server
+    public JettyWebServer(
+        Handler requestHandler,
+        Collection<ServerConnectorFactory> connectorFactories
     ) {
-        HttpConfiguration https = new HttpConfiguration();
-        https.addCustomizer(new SecureRequestCustomizer());
-        SslContextFactory sslContextFactory = new JettySslContextFactory(configuration.getSslProviders());
-        return new ServerConnector(
-            server,
-            new SslConnectionFactory(sslContextFactory, "http/1.1"),
-            new HttpConnectionFactory(https)
-        );
-    }
-
-    private ServerConnector getHttpConnector(
-        Server server
-    ) {
-        HttpConfiguration config = new HttpConfiguration();
-        HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(config);
-        HTTP2CServerConnectionFactory http2cConnectionFactory = new HTTP2CServerConnectionFactory(config);
-        return new ServerConnector(server, httpConnectionFactory, http2cConnectionFactory);
+        this.requestHandler = requestHandler;
+        this.connectorFactories = connectorFactories;
     }
 
     @Override
     public void run() {
         Server server = new Server();
 
-        for (IPAddressPortPair ipPortPair : configuration.getPlainTextListen()) {
-            ServerConnector http = getHttpConnector(server);
-            http.setHost(ipPortPair.getIpAddress().toString());
-            http.setPort(ipPortPair.getPort());
-            http.setIdleTimeout(30000);
-            server.addConnector(http);
-        }
-
-        for (IPAddressPortPair ipPortPair : configuration.getSslListen()) {
-            ServerConnector https = getHttpsConnector(server);
-            https.setHost(ipPortPair.getIpAddress().toString());
-            https.setPort(ipPortPair.getPort());
-            https.setIdleTimeout(30000);
-            server.addConnector(https);
-        }
-
-        for (Connector y : server.getConnectors()) {
-            for (ConnectionFactory x : y.getConnectionFactories()) {
-                if (x instanceof HttpConnectionFactory) {
-                    ((HttpConnectionFactory) x).getHttpConfiguration().setSendServerVersion(false);
-                }
-            }
+        for (ServerConnectorFactory connectorFactory : connectorFactories) {
+            server.addConnector(connectorFactory.create(server));
         }
 
         try {
             GzipHandler gzip = new GzipHandler();
-            gzip.setIncludedMethods("GET", "POST");
+            gzip.setIncludedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
             gzip.setMinGzipSize(245);
             gzip.setIncludedMimeTypes(
                 "text/plain",
@@ -102,58 +43,7 @@ public class JettyWebServer implements WebServer {
             );
             server.setHandler(gzip);
 
-            WebRequestHandler requestHandler = configuration.getWebRequestHandler();
-
-            gzip.setHandler(new AbstractHandler() {
-                @Override
-                public void handle(
-                    String target,
-                    Request baseRequest,
-                    HttpServletRequest request,
-                    HttpServletResponse response
-                ) throws IOException, ServletException {
-                    ServerHttpResponse serverHttpResponse = requestHandler.onRequest(
-                        new ServerHttpRequest(
-                            request
-                        )
-                    );
-                    response.setStatus(serverHttpResponse.getStatusCode());
-
-                    for (Map.Entry<String, List<String>> entry : serverHttpResponse.getHeaders().entrySet()) {
-                        if (entry.getKey().equals("Content-Type")) {
-                            response.setCharacterEncoding(null);
-                            for (String value : entry.getValue()) {
-                                response.setContentType(value);
-                            }
-                        } else if (entry.getKey().equals("Content-Length")) {
-                            for (String value : entry.getValue()) {
-                                response.setContentLengthLong(Long.parseLong(value));
-                            }
-                        } else {
-                            for (String value : entry.getValue()) {
-                                response.addHeader(entry.getKey(), value);
-                            }
-                        }
-                    }
-
-                    ServletOutputStream outputStream = response.getOutputStream();
-                    InputStream inputStream = serverHttpResponse.getBodyStream();
-
-                    try (
-                        ReadableByteChannel inputChannel = Channels.newChannel(inputStream);
-                        WritableByteChannel outputChannel = Channels.newChannel(outputStream);
-                    ) {
-                        ByteBuffer buffer = ByteBuffer.allocateDirect(10240);
-                        while (inputChannel.read(buffer) != -1) {
-                            buffer.flip();
-                            outputChannel.write(buffer);
-                            buffer.clear();
-                        }
-                    }
-
-                    outputStream.flush();
-                }
-            });
+            gzip.setHandler(requestHandler);
             server.start();
             server.join();
         } catch (Throwable e) {
