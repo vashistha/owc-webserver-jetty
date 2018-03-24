@@ -1,7 +1,7 @@
 package com.opsbears.webcomponents.webserver.jetty;
 
-import com.opsbears.webcomponents.net.http.ServerHttpRequest;
 import com.opsbears.webcomponents.net.http.ServerHttpResponse;
+import com.opsbears.webcomponents.net.http.servlet.ServerRequestFactory;
 import com.opsbears.webcomponents.webserver.WebRequestHandler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -36,9 +36,7 @@ class JettyRequestHandler extends AbstractHandler {
         HttpServletResponse response
     ) throws IOException, ServletException {
         ServerHttpResponse serverHttpResponse = requestHandler.onRequest(
-            new ServerHttpRequest(
-                request
-            )
+            new ServerRequestFactory().create(request)
         );
         response.setStatus(serverHttpResponse.getStatusCode());
 

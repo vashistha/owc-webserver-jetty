@@ -12,7 +12,6 @@ import org.bouncycastle.crypto.util.PrivateKeyInfoFactory;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemReader;
-import org.slf4j.simple.SimpleLogger;
 
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -140,8 +139,6 @@ public class TestServerApplication {
 
 
     public static void main(String[] args) {
-        System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG");
-
         JettyWebServerFactory serverFactory = new JettyWebServerFactory();
 
         WebServer server = serverFactory.create(
